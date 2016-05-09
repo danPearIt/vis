@@ -31891,15 +31891,19 @@ return /******/ (function(modules) { // webpackBootstrap
     _createClass(Icon, [{
       key: 'resize',
       value: function resize(ctx) {
-        if (this.width === undefined) {
+        if (typeof this.width === 'undefined') {
           var margin = 5;
-          var iconSize = {
-            width: Number(this.options.icon.size),
-            height: Number(this.options.icon.size)
-          };
-          this.width = iconSize.width + 2 * margin;
-          this.height = iconSize.height + 2 * margin;
-          this.radius = 0.5 * this.width;
+          var iconSize = Number(this.options.icon.size);
+
+          if (typeof this.options.icon.width !== 'undefined' && typeof this.options.icon.height !== 'undefined' ){
+            this.width = this.options.icon.width + iconSize;
+            this.height = this.options.icon.height;
+            this.radius = this.width;
+          }else{
+            this.width = iconSize + 2 * margin;
+            this.height = iconSize + 2 * margin;
+            this.radius = this.width;
+          }
         }
       }
     }, {
@@ -31908,9 +31912,19 @@ return /******/ (function(modules) { // webpackBootstrap
         this.resize(ctx);
         this.options.icon.size = this.options.icon.size || 50;
 
-        this.left = x - this.width * 0.5;
-        this.top = y - this.height * 0.5;
         this._icon(ctx, x, y, selected);
+
+        if ((this.options.icon.width !== undefined) && (this.options.icon.height !== undefined)) {
+          this.left = x;
+          this.top = y;
+          this.width = this.options.icon.width + 20;
+          this.height = this.options.icon.height + 20;
+          this.radius = this.width;
+
+        }else{
+          this.left = x - this.width * 0.5;
+          this.top = y - this.height * 0.5;
+        }
 
         if (this.options.label !== undefined) {
           var iconTextSpacing = 5;
@@ -31922,37 +31936,106 @@ return /******/ (function(modules) { // webpackBootstrap
     }, {
       key: 'updateBoundingBox',
       value: function updateBoundingBox(x, y) {
-        this.boundingBox.top = y - this.options.icon.size * 0.5;
-        this.boundingBox.left = x - this.options.icon.size * 0.5;
-        this.boundingBox.right = x + this.options.icon.size * 0.5;
-        this.boundingBox.bottom = y + this.options.icon.size * 0.5;
 
-        if (this.options.label !== undefined && this.labelModule.size.width > 0) {
-          var iconTextSpacing = 5;
-          this.boundingBox.left = Math.min(this.boundingBox.left, this.labelModule.size.left);
-          this.boundingBox.right = Math.max(this.boundingBox.right, this.labelModule.size.left + this.labelModule.size.width);
-          this.boundingBox.bottom = Math.max(this.boundingBox.bottom, this.boundingBox.bottom + this.labelModule.size.height + iconTextSpacing);
+        if ((this.options.icon.width !== undefined) && (this.options.icon.height !== undefined)){
+          this.boundingBox.top = y - this.options.icon.size;
+          this.boundingBox.left = x - (this.options.icon.width/2);
+          this.boundingBox.right = x + this.options.icon.width;
+          this.boundingBox.bottom = y + this.options.icon.height;
+
+          //set left boundery of clickable area
+          this.width = this.options.icon.width + this.options.icon.size;
+          this.height = this.options.icon.height;
+          this.left = this.boundingBox.left;
+          this.top = this.boundingBox.top;
+
+        }
+        //keep this else it draw zoomed
+        else {
+          this.boundingBox.top = y - this.options.icon.size * 0.5;
+          this.boundingBox.left = x - this.options.icon.size * 0.5;
+          this.boundingBox.right = x + this.options.icon.size * 0.5;
+          this.boundingBox.bottom = y + this.options.icon.size * 0.5;
+
+          if (this.options.label !== undefined && this.labelModule.size.width > 0) {
+            var iconTextSpacing = 5;
+            this.boundingBox.left = Math.min(this.boundingBox.left, this.labelModule.size.left);
+            this.boundingBox.right = Math.max(this.boundingBox.right, this.labelModule.size.left + this.labelModule.size.width);
+            this.boundingBox.bottom = Math.max(this.boundingBox.bottom, this.boundingBox.bottom + this.labelModule.size.height + iconTextSpacing);
+          }
         }
       }
     }, {
       key: '_icon',
       value: function _icon(ctx, x, y, selected) {
-        var iconSize = Number(this.options.icon.size);
 
         if (this.options.icon.code !== undefined) {
-          ctx.font = (selected ? "bold " : "") + iconSize + "px " + this.options.icon.face;
+          // draw shadow if enabled
+          //this.enableShadow(ctx);
 
-          // draw icon
-          ctx.fillStyle = this.options.icon.color || "black";
+          //this.options.icon.size = this.options.icon.size || 50;
+          this.options.icon.size = 35;
+
+          var iconSize = Number(this.options.icon.size);
+          var borderWidth = iconSize * 3;
+          var borderHeight = iconSize * 2;
+          var borderX = x - iconSize;
+
+          // Icon font
+          //ctx.font = (selected ? "bold " : "") + iconSize + "px " + this.options.icon.face;
+          ctx.font = iconSize + "px " + this.options.icon.face;
+
+          var longestLineTextSize = 1;
+          if (this.options.icon.label !== undefined && this.options.icon.label.text !== undefined) {
+            var lines = String(this.options.icon.label.text).split('\n');
+            var longest = lines.sort(function (a, b) { return b.length - a.length; })[0];
+            longestLineTextSize = longest.length * 10;
+            borderWidth = (borderWidth > longestLineTextSize) ? borderWidth : longestLineTextSize + 10;
+            borderX = ((iconSize * 2) > longestLineTextSize ) ? (x - iconSize) : (x - (longestLineTextSize/2) + 20);
+            borderHeight += ((lines.length + 1) * this.options.font.size);
+
+          }
+
+          // Background
+          ctx.fillStyle = this.options.icon.background || 'white';
+          ctx.roundRect(borderX, y - iconSize, borderWidth, borderHeight, 10);
+          ctx.fill();
+
+          // Draw icon
+          ctx.fillStyle = ((selected && this.options.icon.selected)? this.options.icon.selected : this.options.icon.color) || "black";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
+          ctx.fillText(this.options.icon.code, borderX + (borderWidth / 2), y-7);
 
-          // draw shadow if enabled
-          this.enableShadow(ctx);
-          ctx.fillText(this.options.icon.code, x, y);
+          // Draw label (by lines)
+          if (this.options.icon.label !== undefined && this.options.icon.label.text !== undefined) {
+
+            ctx.font = this.options.font.size + "px " + this.options.font.face;
+            ctx.fillStyle = this.options.icon.label.color || "black";
+
+            // Draw the text
+            for (var i = 0; i < lines.length; i++) {
+              ctx.fillText(lines[i], borderX + (longestLineTextSize/2) + 10, (y - 10) + iconSize + (i * 20));
+            }
+          }
+
+          //Draw border
+          if (this.options.icon.border !== undefined) {
+            ctx.strokeStyle = this.options.icon.border;
+            ctx.lineWidth = 2;
+            ctx.roundRect(borderX, y - iconSize , borderWidth, borderHeight, 10);
+            if (selected){
+              ctx.lineWidth = 4;
+            }
+            ctx.stroke();
+          }
+
+          this.options.icon.width = borderWidth;
+          this.options.icon.height = borderHeight;
 
           // disable shadows for other elements.
-          this.disableShadow(ctx);
+          ////this.disableShadow(ctx);
+
         } else {
           console.error('When using the icon shape, you need to define the code in the icon options object. This can be done per node or globally.');
         }
@@ -43051,7 +43134,7 @@ return /******/ (function(modules) { // webpackBootstrap
                 this.options.editNode(data, function (finalizedData) {
                   if (finalizedData !== null && finalizedData !== undefined && _this2.inMode === 'editNode') {
                     // if for whatever reason the mode has changes (due to dataset change) disregard the callback) {
-                    _this2.body.data.nodes.getDataSet().update(finalizedData);
+                    selectNodes
                   }
                   _this2.showManipulatorToolbar();
                 });
